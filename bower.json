@@ -1,0 +1,20 @@
+{
+  "name": "markdown-together",
+  "description": "",
+  "main": "bundle.js",
+  "authors": [
+    "Yizhe <yuanyizhe@gmail.com>"
+  ],
+  "license": "ISC",
+  "moduleType": [],
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {}
+}

@@ -1,0 +1,11 @@
+node_modules
+bower_components
+.idea/
+#.idea/scopes/scope_settings.xml
+#.idea/workspace.xml
+
+start.sh
+
+# VIM
+*~
+*.swp
