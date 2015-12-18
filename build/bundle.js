@@ -19616,12 +19616,11 @@ webpackJsonp([0],[
 	    render: function () {
 	        return (
 	            React.createElement("div", {className: "container"}, 
-	                React.createElement(Editor, null, 
-	                    React.createElement("option", {title: "自定义按钮", onClick: this._handleClick}, React.createElement("i", {className: "fa fa-bomb"}))
-	                )
+	                React.createElement(Editor, null)
 	            )
 	        );
 	    },
+	    //<option title="自定义按钮" onClick={this._handleClick}><i className="fa fa-bomb"></i></option>
 	    _handleClick () {
 	        /* eslint-disable no-alert */
 	        alert('这个是自定义按钮');
