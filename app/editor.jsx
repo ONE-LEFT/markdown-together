@@ -4,7 +4,7 @@ var T = React.PropTypes;
 var marked = require('marked');
 var cNames = require('classnames');
 var JsDiff = require('diff');
-var ContentStore = require('./ContentStore');
+var ContentStore = require('./ContentStore.jsx');
 var EventEmitter = require('eventemitter3');
 var EE = new EventEmitter();
 
@@ -35,7 +35,7 @@ var DSMConnection = function (fileName, setContent, updateContent) {
         connectedNode.attachChild([diffStore, infoChannel], function () {
 
             if (diffStore.size() > 0) {
-                console.log('diffStore.size:', diffStore.size());
+                //console.log('diffStore.size:', diffStore.size());
                 //var content = '';
 
                 for (var i = 0; i < diffStore.size(); i += 1) {
@@ -49,7 +49,7 @@ var DSMConnection = function (fileName, setContent, updateContent) {
             }
 
             diffStore.remoteupdate = function (op) {
-                console.log('diffStore.remoteupdate:', op);
+                //console.log('diffStore.remoteupdate:', op);
                 switch (op.type) {
                     case DSM.Operation.ADD:
                         ContentStore.diffQueue.push(op.item);
@@ -65,7 +65,7 @@ var DSMConnection = function (fileName, setContent, updateContent) {
             };
 
             infoChannel.remoteupdate = function (op) {
-                console.log('infoChannel.remoteupdate:', op);
+                //console.log('infoChannel.remoteupdate:', op);
 
             };
         });
@@ -77,7 +77,7 @@ var DSMConnection = function (fileName, setContent, updateContent) {
      * @param {object} diff           diff data
      */
     this.sendDiff = function (diff) {
-        console.log('sendDiff:', diff);
+        //console.log('sendDiff:', diff);
         diffStore.append(diff);
         diffStore.commit();
     };
@@ -209,24 +209,26 @@ var MdEditor = React.createClass({
         })
     },
     _getModeBar () {
-        const checkActive = (mode) => cNames({active: this.state.mode === mode})
+        var previewActive = cNames({active: this.state.mode === 'preview'});
+        var splitActive = cNames({active: this.state.mode === 'split'});
+        var editActive = cNames({active: this.state.mode === 'edit'});
 
         return (
             <ul className="md-modebar">
                 <li className="tb-btn pull-right">
-                    <a className={checkActive('preview')} onClick={this._changeMode('preview')} title="预览模式">
+                    <a className={previewActive} onClick={this._changeMode('preview')} title="预览模式">
                         <i className="fa fa-eye"/>
                     </a>
                 </li>
                 { /* preview mode */ }
                 <li className="tb-btn pull-right">
-                    <a className={checkActive('split')} onClick={this._changeMode('split')} title="分屏模式">
+                    <a className={splitActive} onClick={this._changeMode('split')} title="分屏模式">
                         <i className="fa fa-columns"/>
                     </a>
                 </li>
                 { /* split mode */ }
                 <li className="tb-btn pull-right">
-                    <a className={checkActive('edit')} onClick={this._changeMode('edit')} title="编辑模式">
+                    <a className={editActive} onClick={this._changeMode('edit')} title="编辑模式">
                         <i className="fa fa-pencil"/>
                     </a>
                 </li>
@@ -246,7 +248,7 @@ var MdEditor = React.createClass({
             //JsDiff.createPatch(fileName, oldStr, newStr, oldHeader, newHeader);
             this.dsmConnection.sendDiff(JsDiff.createPatch('Markdown' + this.state.fileName, ContentStore.content, this.textControl.value));
             //console.log(JsDiff.createPatch(this.state.fileName, ContentStore.content, this.textControl.value));
-            ContentStore.content = this.textControl.value;
+            //ContentStore.content = this.textControl.value;
             this.setState({
                 result: marked(this.textControl.value)
             }); // change state
@@ -289,7 +291,6 @@ var MdEditor = React.createClass({
     },
     _codeText () {
         this._preInputText("```\ncode block\n```", 4, 14);
-        console.log(window.DSM);
     },
     _pictureText () {
         this._preInputText("![alt](www.yourlink.com)", 2, 5);

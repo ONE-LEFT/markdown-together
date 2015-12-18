@@ -8,7 +8,7 @@ var ContentStore = {
     patchDiff: function () {
         var tmp;
         while (tmp = this.diffQueue.shift()) {
-            console.log(tmp);
+            //console.log(tmp);
             var result = JsDiff.applyPatch(this.content, tmp);
             if (result)
                 this.content = result;
