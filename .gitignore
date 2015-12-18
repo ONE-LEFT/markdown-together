@@ -1,7 +1,8 @@
 node_modules
 bower_components
 .idea/
-
+build/vendors.js
+build/bundle.js
 #.idea/scopes/scope_settings.xml
 #.idea/workspace.xml
 
