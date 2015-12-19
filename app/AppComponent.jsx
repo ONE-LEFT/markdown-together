@@ -1,5 +1,5 @@
 var React = require('react');
-var Editor = require('./editor.jsx');
+var Editor = require('./Editor.jsx');
 
 var AppComponent = React.createClass({
     render: function () {

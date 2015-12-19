@@ -3,17 +3,33 @@ var EE = new EventEmitter();
 var JsDiff = require('diff');
 
 var ContentStore = {
+    fileName: '',
     content: '',
     diffQueue: [],
+    diffHistory: [],
     patchDiff: function () {
         var tmp;
         while (tmp = this.diffQueue.shift()) {
             //console.log(tmp);
             var result = JsDiff.applyPatch(this.content, tmp);
-            if (result)
+            if (result) {
                 this.content = result;
+            } else {
+                console.error(
+                    '### patchDiff ERROR ###',
+                    '\n### source ###\n',
+                    this.content,
+                    '\n### patch ###\n' +
+                    tmp
+                );
+            }
         }
-        //this.content = JsDiff.applyPatch('','Index: test\n===================================================================\n--- test\n+++ test\n@@ -1,0 +1,4 @@\n\\ No newline at end of file\n+Hello WOl\n+dsf\n+sdfakljlkajfd ds al\n+ WOrld\n');
+        console.debug('### patchDiff result ###\n', this.content);
+    },
+    updateContent: function (newContent) {
+        var diff = JsDiff.createPatch(this.fileName, this.content, newContent);
+        if (diff) this.content = newContent;
+        return diff;
     }
     //setContent: function (content) {
     //    this.content = content;

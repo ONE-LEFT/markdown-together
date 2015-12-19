@@ -5,18 +5,16 @@ var marked = require('marked');
 var cNames = require('classnames');
 var JsDiff = require('diff');
 var ContentStore = require('./ContentStore.jsx');
-var EventEmitter = require('eventemitter3');
-var EE = new EventEmitter();
+var EE = require('./EventEmitter.jsx');
+var DSMConnection = require('./DSMConnection.jsx');
 
 require('./editor.less');
 require('./markdown.less');
 
-
-
-var fileName = 'test';
+ContentStore.fileName = 'Markdown' + 'test2';
 
 var MdEditor = React.createClass({
-    dsmConnection: new DSMConnection(fileName || ''),
+    dsmConnection: null,
     propTypes: {
         content: T.string,
         children: T.node
@@ -26,21 +24,27 @@ var MdEditor = React.createClass({
             panelClass: 'md-panel',
             mode: 'split',
             isFullScreen: false,
-            result: marked(ContentStore.content || ''),
+            result: ''
+            //result: marked(ContentStore.content || ''),
             //content: ContentStore.content || '',
-            fileName: fileName || ''
+            //fileName: ContentStore.fileName || 'Markdown'
         }
     },
-    contentChange(){
+    contentRemoteChange(){
+        console.debug('### contentRemoteChange ###');
         ContentStore.patchDiff();
         this.textControl.value = ContentStore.content;
+        console.debug('### textControl value ###');
+        console.debug(this.textControl.value);
         this.state.result = marked(ContentStore.content);
         this.forceUpdate();
     },
     componentDidMount(){
+        console.debug('### componentDidMount ###');
         this.textControl = ReactDOM.findDOMNode(this.refs.editor);
         this.previewControl = ReactDOM.findDOMNode(this.refs.preview);
-        EE.on('change', this.contentChange);
+        EE.on('change',this.contentRemoteChange);
+        this.dsmConnection = new DSMConnection(ContentStore.fileName);
     },
     componentWillUnmount(){
         this.textControl = null;
@@ -151,17 +155,25 @@ var MdEditor = React.createClass({
     },
     // event handlers
     _onChange (e) {
+        this.setState({
+            result: marked(this.textControl.value)
+        });
         this._isDirty = true; // set dirty
         if (this._ltr) clearTimeout(this._ltr);
         this._ltr = setTimeout(function () {
-            //JsDiff.createPatch(fileName, oldStr, newStr, oldHeader, newHeader);
-            this.dsmConnection.sendDiff(JsDiff.createPatch('Markdown' + this.state.fileName, ContentStore.content, this.textControl.value));
-            //console.log(JsDiff.createPatch(this.state.fileName, ContentStore.content, this.textControl.value));
-            //ContentStore.content = this.textControl.value;
-            this.setState({
-                result: marked(this.textControl.value)
-            }); // change state
-        }.bind(this), 500);
+            console.debug('### _onChange setTimeout ###\n',this.textControl.value);
+            var diff = ContentStore.updateContent(this.textControl.value);
+            if(diff) {
+                this.dsmConnection.sendDiff(diff);
+                this.setState({
+                    result: marked(this.textControl.value)
+                }); // change state
+            } else {
+                this.setState({
+                    result: marked(ContentStore.content)
+                }); // change state
+            }
+        }.bind(this), 1000);
     },
     _changeMode (mode) {
         return function (e) {
@@ -185,6 +197,7 @@ var MdEditor = React.createClass({
         // pre-select
         this.textControl.setSelectionRange(start + preStart, start + preEnd);
         this.setState({result: marked(this.textControl.value)}); // change state
+        this._onChange();
     },
     _boldText () {
         this._preInputText("**加粗文字**", 2, 6);
