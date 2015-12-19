@@ -19,7 +19,7 @@ var MdEditor = React.createClass({
         content: T.string,
         children: T.node
     },
-    getInitialState(){
+    getInitialState: function () {
         return {
             panelClass: 'md-panel',
             mode: 'split',
@@ -30,7 +30,7 @@ var MdEditor = React.createClass({
             //fileName: ContentStore.fileName || 'Markdown'
         }
     },
-    contentRemoteChange(){
+    contentRemoteChange: function () {
         console.debug('### contentRemoteChange ###');
         ContentStore.patchDiff();
         this.textControl.value = ContentStore.content;
@@ -39,18 +39,18 @@ var MdEditor = React.createClass({
         this.state.result = marked(ContentStore.content);
         this.forceUpdate();
     },
-    componentDidMount(){
+    componentDidMount: function () {
         console.debug('### componentDidMount ###');
         this.textControl = ReactDOM.findDOMNode(this.refs.editor);
         this.previewControl = ReactDOM.findDOMNode(this.refs.preview);
-        EE.on('change',this.contentRemoteChange);
+        EE.on('change', this.contentRemoteChange);
         this.dsmConnection = new DSMConnection(ContentStore.fileName);
     },
-    componentWillUnmount(){
+    componentWillUnmount: function () {
         this.textControl = null;
         this.previewControl = null;
     },
-    render(){
+    render: function () {
         var panelClass = cNames(['md-panel', {'fullscreen': this.state.isFullScreen}]);
         var editorClass = cNames(['md-editor', {'expand': this.state.mode === 'edit'}]);
         var previewClass = cNames(['md-preview', 'markdown', {
@@ -76,14 +76,14 @@ var MdEditor = React.createClass({
         )
     },
     // public methods
-    isDirty () {
+    isDirty: function () {
         return this._isDirty || false
     },
-    getValue () {
+    getValue: function () {
         return this.state.content
     },
     // widgets constructors
-    _getToolBar () {
+    _getToolBar: function () {
         return (
             <ul className="md-toolbar clearfix">
                 <li className="tb-btn"><a title="加粗" onClick={this._boldText}><i className="fa fa-bold"/></a></li>
@@ -114,14 +114,14 @@ var MdEditor = React.createClass({
             </ul>
         )
     },
-    _getExternalBtn () {
+    _getExternalBtn: function () {
         return React.Children.map(this.props.children, function (option) {
             if (option.type === 'option') {
                 return <li className="tb-btn"><a {...option.props}>{option.props.children}</a></li>
             }
         })
     },
-    _getModeBar () {
+    _getModeBar: function () {
         var previewActive = cNames({active: this.state.mode === 'preview'});
         var splitActive = cNames({active: this.state.mode === 'split'});
         var editActive = cNames({active: this.state.mode === 'edit'});
@@ -154,16 +154,16 @@ var MdEditor = React.createClass({
         )
     },
     // event handlers
-    _onChange (e) {
+    _onChange: function (e) {
         this.setState({
             result: marked(this.textControl.value)
         });
         this._isDirty = true; // set dirty
         if (this._ltr) clearTimeout(this._ltr);
         this._ltr = setTimeout(function () {
-            console.debug('### _onChange setTimeout ###\n',this.textControl.value);
+            console.debug('### _onChange setTimeout ###\n', this.textControl.value);
             var diff = ContentStore.updateContent(this.textControl.value);
-            if(diff) {
+            if (diff) {
                 this.dsmConnection.sendDiff(diff);
                 this.setState({
                     result: marked(this.textControl.value)
@@ -175,16 +175,16 @@ var MdEditor = React.createClass({
             }
         }.bind(this), 1000);
     },
-    _changeMode (mode) {
+    _changeMode: function (mode) {
         return function (e) {
-            this.setState({mode});
+            this.setState({mode: mode});
         }.bind(this);
     },
-    _toggleFullScreen (e) {
+    _toggleFullScreen: function (e) {
         this.setState({isFullScreen: !this.state.isFullScreen})
     },
     // default text processors
-    _preInputText (text, preStart, preEnd) {
+    _preInputText: function (text, preStart, preEnd) {
         var start = this.textControl.selectionStart;
         var end = this.textControl.selectionEnd;
         var origin = this.textControl.value;
@@ -199,31 +199,31 @@ var MdEditor = React.createClass({
         this.setState({result: marked(this.textControl.value)}); // change state
         this._onChange();
     },
-    _boldText () {
+    _boldText: function () {
         this._preInputText("**加粗文字**", 2, 6);
     },
-    _italicText () {
+    _italicText: function () {
         this._preInputText("_斜体文字_", 1, 5);
     },
-    _linkText () {
+    _linkText: function () {
         this._preInputText("[链接文本](www.yourlink.com)", 1, 5);
     },
-    _blockquoteText () {
+    _blockquoteText: function () {
         this._preInputText("> 引用", 2, 4);
     },
-    _codeText () {
+    _codeText: function () {
         this._preInputText("```\ncode block\n```", 4, 14);
     },
-    _pictureText () {
+    _pictureText: function () {
         this._preInputText("![alt](www.yourlink.com)", 2, 5);
     },
-    _listUlText () {
+    _listUlText: function () {
         this._preInputText("- 无序列表项0\n- 无序列表项1", 2, 8);
     },
-    _listOlText () {
+    _listOlText: function () {
         this._preInputText("1. 有序列表项0\n2. 有序列表项1", 3, 9);
     },
-    _headerText () {
+    _headerText: function () {
         this._preInputText("## 标题", 3, 5);
     }
 });
