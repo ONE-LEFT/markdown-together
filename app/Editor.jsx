@@ -6,11 +6,13 @@ var cNames = require('classnames');
 var ContentStore = require('./ContentStore.jsx');
 var EE = require('./EventEmitter.jsx');
 var DSMConnection = require('./DSMConnection.jsx');
+var JsDiff = require('diff');
 
 require('./editor.less');
 require('./markdown.less');
 
-ContentStore.fileName = 'Markdown' + 'test4';
+var fileName = 'Markdown' + 'test15';
+var sendInterval = 600;
 
 var MdEditor = React.createClass({
     dsmConnection: null,
@@ -26,24 +28,71 @@ var MdEditor = React.createClass({
             result: ''
             //result: marked(ContentStore.content || ''),
             //content: ContentStore.content || '',
-            //fileName: ContentStore.fileName || 'Markdown'
+            //fileName: fileName || 'Markdown'
         }
+    },
+    doPatch: function () {
+        while (this.dsmConnection.position < this.dsmConnection.diffStore.size()) {
+            // TODO check whether diff exist err
+            console.debug('### doPatch PATCH pos ###:', this.dsmConnection.position);
+            try {
+                var item = JSON.parse(this.dsmConnection.diffStore.get(this.dsmConnection.position));
+                var result = JsDiff.applyPatch(this.dsmConnection.content, item.diff);
+                console.debug('### doPatch applyPatch diff ###\n### diff file ###\n', item.diff);
+                if (result) {
+                    this.dsmConnection.content = result;
+                } else {
+                    // TODO set diff err
+                    console.error(
+                        '### doPatch PATCH ERROR ###',
+                        '\n### src file ###\n',
+                        this.dsmConnection.content,
+                        '\n### diff file ###\n',
+                        item.diff);
+                }
+            } catch (err) {
+                console.error('### doPatch ERROR ###\n', err);
+            }
+            this.dsmConnection.position += 1;
+        }
+        this.dsmConnection.onPatching = false;
     },
     contentRemoteChange: function () {
         console.debug('### contentRemoteChange ###');
-        ContentStore.patchDiff();
-        this.textControl.value = ContentStore.content;
-        console.debug('### textControl value ###');
-        console.debug(this.textControl.value);
-        this.state.result = marked(ContentStore.content);
-        this.forceUpdate();
+        var diff;
+        if (this._changeTimer) {
+            clearTimeout(this._changeTimer);
+            // PRE DIFF LOCAL CHANGE
+            if (this.textControl.value != this.dsmConnection.content) {
+                diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
+                console.debug('### contentRemoteChange createPatch diff ###\n### diff file ###\n', diff);
+                if (!diff) {
+                    this.textControl.value = this.dsmConnection.content;
+                }
+            }
+        }
+        this.doPatch();
+        // RESTORE LOCAL CHANGE
+        var textControlResult;
+        if (diff) {
+            textControlResult = JsDiff.applyPatch(this.dsmConnection.content, diff);
+        }
+        if (textControlResult) {
+            this.textControl.value = textControlResult;
+            this._onChange();
+        } else {
+            this.textControl.value = this.dsmConnection.content;
+        }
+        console.debug('### contentRemoteChange result ###\n', this.textControl.value);
+        this.setState({result: marked(this.textControl.value)});
     },
     componentDidMount: function () {
         console.debug('### componentDidMount ###');
         this.textControl = ReactDOM.findDOMNode(this.refs.editor);
         this.previewControl = ReactDOM.findDOMNode(this.refs.preview);
+
         EE.on('change', this.contentRemoteChange);
-        this.dsmConnection = new DSMConnection(ContentStore.fileName);
+        this.dsmConnection = new DSMConnection(fileName);
     },
     componentWillUnmount: function () {
         this.textControl = null;
@@ -155,25 +204,23 @@ var MdEditor = React.createClass({
     // event handlers
     _onChange: function (e) {
         console.debug('### _onChange ###\n');
-        if (this._ltrOut) clearTimeout(this._ltrOut);
-        this._ltrOut = setTimeout(function () {
-            var diff = ContentStore.generateDiff(this.textControl.value);
-            if (diff) {
-                console.debug('### _onChange diff ###\n', diff);
-                this._isDirty = true; // set dirty
-                if (this._ltr) clearTimeout(this._ltr);
-                this._ltr = setTimeout(function () {
-                    ContentStore.updateContent(diff);
-                    this.dsmConnection.sendDiff(diff);
-                }.bind(this), 1000);
+        if (this._changeTimer) clearTimeout(this._changeTimer);
+        var doChange = function() {
+            if (!this.dsmConnection.onPatching) {
+                this.dsmConnection.onPatching = true;
+                var diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
+                console.debug('### _onChange createPatch diff ###\n', diff);
+                this.dsmConnection.sendDiff(diff);
+                this.doPatch();
+                this.textControl.value = this.dsmConnection.content;
+                this.setState({result: marked(this.textControl.value)});
+                this._changeTimer = undefined;
             } else {
-                this.textControl.value = this.lastTextControlValue;
+                this._changeTimer = setTimeout(doChange, 200);
             }
-            this.setState({
-                result: marked(this.textControl.value)
-            });
-            this.lastTextControlValue = this.textControl.value
-        }.bind(this), 200);
+        }.bind(this);
+        this._changeTimer = setTimeout(doChange, sendInterval);
+        this.setState({result: marked(this.textControl.value)});
     },
     _changeMode: function (mode) {
         return function (e) {

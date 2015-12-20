@@ -18,60 +18,76 @@ var DSMConnection = function (fileName) {
     };
     localTreeConfig.transportConfig.protocol = "TCP/TRAP";
 
-    var diffStore = new DSM.ListReplica("diffStore");
-    var infoChannel = new DSM.HashReplica("infoChannel");
+    this.diffStore = new DSM.ListReplica("diffStore");
+    this.infoChannel = new DSM.HashReplica("infoChannel");
+    this.content = '';
+    this.position = 0;
+    this.onPatching = false;
+    this.emitChange = function () {
+        if (!self.onPatching) {
+            self.onPatching = true;
+            EE.emit('change');
+        } else {
+            setTimeout(this.emitChange, 200);
+        }
+    };
 
     var localSyncTree = new DSM.LocalSyncTree(localTreeConfig, function () {
 
         var connectedNode = localSyncTree.ROOT.newChildNode("connected");
 
-        connectedNode.attachChild([diffStore, infoChannel], function () {
+        connectedNode.attachChild([self.diffStore, self.infoChannel], function () {
 
             var addItemToContentStore = function (itemStr, pos) {
-                try {
-                    var diffItem = JSON.parse(itemStr);
-                    ContentStore.diffQueue.push({
-                        item: diffItem,
-                        pos: pos
-                    });
-                    ContentStore.diffHistory.push({
-                        item: diffItem,
-                        pos: pos
-                    });
-                } catch (err) {
-                    console.error('### addItemToContentStore ERROR ###\n', err);
-                    self.setDiffErr(op.pos);
-                }
+                //try {
+                //    var diffItem = JSON.parse(itemStr);
+                //    ContentStore.diffQueue.push({
+                //        item: diffItem,
+                //        pos: pos
+                //    });
+                //    ContentStore.diffHistory.push({
+                //        item: diffItem,
+                //        pos: pos
+                //    });
+                //} catch (err) {
+                //    console.error('### addItemToContentStore ERROR ###\n', err);
+                //    self.setDiffErr(op.pos);
+                //}
             };
 
-            console.debug('### attachChild ###\n', diffStore.toJSON());
-            console.debug('### attachChild size ###\n', diffStore.size());
 
-            if (diffStore.size() > 0) {
-                for (var i = 0; i < diffStore.size(); i += 1) {
-                    addItemToContentStore(diffStore.get(i), i);
-                }
-                EE.emit('change');
+            console.debug('### attachChild ###\n', self.diffStore.toJSON());
+            console.debug('### attachChild size ###\n', self.diffStore.size());
+
+            if (self.diffStore.size() > 0) {
+                //for (var i = 0; i < self.diffStore.size(); i += 1) {
+                //    addItemToContentStore(self.diffStore.get(i), i);
+                //}
+                self.emitChange();
             }
 
-            diffStore.remoteupdate = function (op) {
+            self.diffStore.remoteupdate = function (op) {
                 console.debug('### remoteupdate ###\n', op);
                 switch (op.type) {
                     case DSM.Operation.ADD:
-                        addItemToContentStore(op.item, op.pos);
-                        EE.emit('change');
+                        //addItemToContentStore(op.item, op.pos);
+                        self.emitChange();
                         break;
                     case DSM.Operation.SET:
                         break;
                     case DSM.Operation.DEL:
+                        self.content = '';
+                        self.position = 0;
                         break;
                     case DSM.Operation.CLEAR:
+                        self.content = '';
+                        self.position = 0;
                         break;
                 }
             };
 
-            infoChannel.remoteupdate = function (op) {
-                //console.log('infoChannel.remoteupdate:', op);
+            self.infoChannel.remoteupdate = function (op) {
+                //console.log('self.infoChannel.remoteupdate:', op);
             };
         });
 
@@ -87,9 +103,18 @@ var DSMConnection = function (fileName) {
             err: false
         });
         console.debug('### sendDiff ###\n', diffItem);
-        diffStore.append(diffItem);
-        diffStore.commit();
+        this.diffStore.append(diffItem);
+        this.diffStore.commit();
     };
+
+    //this.sendDiffWithoutCommit = function (diff) {
+    //    var diffItem = JSON.stringify({
+    //        diff: diff,
+    //        err: false
+    //    });
+    //    console.debug('### sendDiffWithoutCommit ###\n', diffItem);
+    //    this.diffStore.append(diffItem);
+    //};
 
     this.setDiffErr = function (pos) {
         console.debug('### setDiffErr ###');
@@ -97,8 +122,8 @@ var DSMConnection = function (fileName) {
             diff: '',
             err: true
         });
-        diffStore.set(pos, diffErr);
-        diffStore.commit();
+        this.diffStore.set(pos, diffErr);
+        this.diffStore.commit();
     };
 
     /**
@@ -106,8 +131,8 @@ var DSMConnection = function (fileName) {
      * @param {string} info            information text
      */
     this.sendInfo = function (info) {
-        infoChannel.set(info);
-        infoChannel.commit();
+        this.infoChannel.set(info);
+        this.infoChannel.commit();
     };
 
     /**
@@ -116,19 +141,19 @@ var DSMConnection = function (fileName) {
      * @param {string} info            information text
      */
     this.clearMessageStore = function () {
-        if (diffStore.size() > 0) {
-            diffStore.clear();
-            diffStore.commit();
+        if (this.diffStore.size() > 0) {
+            this.diffStore.clear();
+            this.diffStore.commit();
         }
     };
 
-    var diffErrCallback = function () {
-        console.debug('### diffErrCallback ###');
-        var tmp = ContentStore.diffErrPosQueue.shift();
-        if (typeof(tmp) != 'undefined')
-            self.setDiffErr(tmp);
-    };
-    EE.on('setDiffErr', diffErrCallback);
+    //var diffErrCallback = function () {
+    //    console.debug('### diffErrCallback ###');
+    //    var tmp = ContentStore.diffErrPosQueue.shift();
+    //    if (typeof(tmp) != 'undefined')
+    //        self.setDiffErr(tmp);
+    //};
+    //EE.on('setDiffErr', diffErrCallback);
 
 };
 
