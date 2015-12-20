@@ -3,7 +3,6 @@ var ReactDOM = require('react-dom');
 var T = React.PropTypes;
 var marked = require('marked');
 var cNames = require('classnames');
-var JsDiff = require('diff');
 var ContentStore = require('./ContentStore.jsx');
 var EE = require('./EventEmitter.jsx');
 var DSMConnection = require('./DSMConnection.jsx');
@@ -11,7 +10,7 @@ var DSMConnection = require('./DSMConnection.jsx');
 require('./editor.less');
 require('./markdown.less');
 
-ContentStore.fileName = 'Markdown' + 'test2';
+ContentStore.fileName = 'Markdown' + 'test4';
 
 var MdEditor = React.createClass({
     dsmConnection: null,
@@ -155,25 +154,26 @@ var MdEditor = React.createClass({
     },
     // event handlers
     _onChange: function (e) {
-        this.setState({
-            result: marked(this.textControl.value)
-        });
-        this._isDirty = true; // set dirty
-        if (this._ltr) clearTimeout(this._ltr);
-        this._ltr = setTimeout(function () {
-            console.debug('### _onChange setTimeout ###\n', this.textControl.value);
-            var diff = ContentStore.updateContent(this.textControl.value);
+        console.debug('### _onChange ###\n');
+        if (this._ltrOut) clearTimeout(this._ltrOut);
+        this._ltrOut = setTimeout(function () {
+            var diff = ContentStore.generateDiff(this.textControl.value);
             if (diff) {
-                this.dsmConnection.sendDiff(diff);
-                this.setState({
-                    result: marked(this.textControl.value)
-                }); // change state
+                console.debug('### _onChange diff ###\n', diff);
+                this._isDirty = true; // set dirty
+                if (this._ltr) clearTimeout(this._ltr);
+                this._ltr = setTimeout(function () {
+                    ContentStore.updateContent(diff);
+                    this.dsmConnection.sendDiff(diff);
+                }.bind(this), 1000);
             } else {
-                this.setState({
-                    result: marked(ContentStore.content)
-                }); // change state
+                this.textControl.value = this.lastTextControlValue;
             }
-        }.bind(this), 1000);
+            this.setState({
+                result: marked(this.textControl.value)
+            });
+            this.lastTextControlValue = this.textControl.value
+        }.bind(this), 200);
     },
     _changeMode: function (mode) {
         return function (e) {

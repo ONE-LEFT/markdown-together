@@ -6,6 +6,8 @@ var ContentStore = require('./ContentStore.jsx');
  */
 var DSMConnection = function (fileName) {
 
+    var self = this;
+
     var localTreeConfig = {};
     localTreeConfig.dsmServerIP = "dsm.md.picfood.cn"; // Change IxP address to your p2p DSM Server address
     localTreeConfig.port = 45066;
@@ -18,19 +20,36 @@ var DSMConnection = function (fileName) {
 
     var diffStore = new DSM.ListReplica("diffStore");
     var infoChannel = new DSM.HashReplica("infoChannel");
+
     var localSyncTree = new DSM.LocalSyncTree(localTreeConfig, function () {
 
         var connectedNode = localSyncTree.ROOT.newChildNode("connected");
 
         connectedNode.attachChild([diffStore, infoChannel], function () {
 
-            console.debug('### attachChild ###\n', diffStore);
+            var addItemToContentStore = function (itemStr, pos) {
+                try {
+                    var diffItem = JSON.parse(itemStr);
+                    ContentStore.diffQueue.push({
+                        item: diffItem,
+                        pos: pos
+                    });
+                    ContentStore.diffHistory.push({
+                        item: diffItem,
+                        pos: pos
+                    });
+                } catch (err) {
+                    console.error('### addItemToContentStore ERROR ###\n', err);
+                    self.setDiffErr(op.pos);
+                }
+            };
+
+            console.debug('### attachChild ###\n', diffStore.toJSON());
             console.debug('### attachChild size ###\n', diffStore.size());
 
             if (diffStore.size() > 0) {
                 for (var i = 0; i < diffStore.size(); i += 1) {
-                    ContentStore.diffQueue.push(diffStore.get(i));
-                    ContentStore.diffHistory.push(diffStore.get(i));
+                    addItemToContentStore(diffStore.get(i), i);
                 }
                 EE.emit('change');
             }
@@ -39,8 +58,7 @@ var DSMConnection = function (fileName) {
                 console.debug('### remoteupdate ###\n', op);
                 switch (op.type) {
                     case DSM.Operation.ADD:
-                        ContentStore.diffQueue.push(op.item);
-                        ContentStore.diffHistory.push(op.item);
+                        addItemToContentStore(op.item, op.pos);
                         EE.emit('change');
                         break;
                     case DSM.Operation.SET:
@@ -64,8 +82,22 @@ var DSMConnection = function (fileName) {
      * @param {object} diff           diff data
      */
     this.sendDiff = function (diff) {
-        console.debug('### sendDiff ###\n', diff);
-        diffStore.append(diff);
+        var diffItem = JSON.stringify({
+            diff: diff,
+            err: false
+        });
+        console.debug('### sendDiff ###\n', diffItem);
+        diffStore.append(diffItem);
+        diffStore.commit();
+    };
+
+    this.setDiffErr = function (pos) {
+        console.debug('### setDiffErr ###');
+        var diffErr = JSON.stringify({
+            diff: '',
+            err: true
+        });
+        diffStore.set(pos, diffErr);
         diffStore.commit();
     };
 
@@ -89,6 +121,15 @@ var DSMConnection = function (fileName) {
             diffStore.commit();
         }
     };
+
+    var diffErrCallback = function () {
+        console.debug('### diffErrCallback ###');
+        var tmp = ContentStore.diffErrPosQueue.shift();
+        if (typeof(tmp) != 'undefined')
+            self.setDiffErr(tmp);
+    };
+    EE.on('setDiffErr', diffErrCallback);
+
 };
 
 module.exports = DSMConnection;
