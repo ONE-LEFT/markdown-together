@@ -4,6 +4,7 @@ var JsDiff = require('diff');
 var ContentStore = {
     fileName: '',
     content: '',
+    pos: 0,
     diffQueue: [],
     diffHistory: [],
     diffErrPosQueue: [],
@@ -23,8 +24,9 @@ var ContentStore = {
                         '\n### patch ###\n' +
                         tmp.item.diff
                     );
-                    this.diffErrPosQueue.push(tmp.pos);
-                    EE.emit('setDiffErr');
+                    // SET DIFF ERR
+                    //this.diffErrPosQueue.push(tmp.pos);
+                    //EE.emit('setDiffErr');
                 }
             }
         }
@@ -49,7 +51,7 @@ var ContentStore = {
                     '\n### newContent ###\n',
                     newContent
                 );
-                diff = undefined;
+                diff = null;
             }
         } else {
             console.error(
