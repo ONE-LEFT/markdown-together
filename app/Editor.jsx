@@ -59,13 +59,19 @@ var MdEditor = React.createClass({
     },
     contentRemoteChange: function () {
         console.debug('### contentRemoteChange ###');
+        //var start = this.textControl.selectionStart;
+        //var end = this.textControl.selectionEnd;
         var diff;
+        //if (this._remoteChangeTimer) clearTimeout(this._remoteChangeTimer);
         if (this._changeTimer) {
+            //this._remoteChangeTimer = setTimeout(this.contentRemoteChange, sendInterval / 2);
+            //return;
             clearTimeout(this._changeTimer);
+            this._changeTimer = null;
             // PRE DIFF LOCAL CHANGE
             if (this.textControl.value != this.dsmConnection.content) {
                 diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
-                console.debug('### contentRemoteChange createPatch diff ###\n### diff file ###\n', diff);
+                console.debug('### contentRemoteChange createLocalPatch diff ###\n### diff file ###\n', diff);
                 if (!diff) {
                     this.textControl.value = this.dsmConnection.content;
                 }
@@ -76,6 +82,7 @@ var MdEditor = React.createClass({
         var textControlResult;
         if (diff) {
             textControlResult = JsDiff.applyPatch(this.dsmConnection.content, diff);
+            console.debug('### contentRemoteChange applyLocalPatch ###\n### result ###\n', textControlResult);
         }
         if (textControlResult) {
             this.textControl.value = textControlResult;
@@ -84,7 +91,10 @@ var MdEditor = React.createClass({
             this.textControl.value = this.dsmConnection.content;
         }
         console.debug('### contentRemoteChange result ###\n', this.textControl.value);
+        //this.textControl.setSelectionRange(start,end);
         this.setState({result: marked(this.textControl.value)});
+        // Clear Timer
+        // this._remoteChangeTimer = null;
     },
     componentDidMount: function () {
         console.debug('### componentDidMount ###');
@@ -205,7 +215,7 @@ var MdEditor = React.createClass({
     _onChange: function (e) {
         console.debug('### _onChange ###\n');
         if (this._changeTimer) clearTimeout(this._changeTimer);
-        var doChange = function() {
+        var doChange = function () {
             if (!this.dsmConnection.onPatching) {
                 this.dsmConnection.onPatching = true;
                 var diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
@@ -214,7 +224,7 @@ var MdEditor = React.createClass({
                 this.doPatch();
                 this.textControl.value = this.dsmConnection.content;
                 this.setState({result: marked(this.textControl.value)});
-                this._changeTimer = undefined;
+                this._changeTimer = null;
             } else {
                 this._changeTimer = setTimeout(doChange, 200);
             }
@@ -243,7 +253,7 @@ var MdEditor = React.createClass({
         this.textControl.value = origin.slice(0, start) + text + origin.slice(end);
         // pre-select
         this.textControl.setSelectionRange(start + preStart, start + preEnd);
-        this.setState({result: marked(this.textControl.value)}); // change state
+        //this.setState({result: marked(this.textControl.value)}); // change state
         this._onChange();
     },
     _boldText: function () {
