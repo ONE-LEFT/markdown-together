@@ -24,11 +24,14 @@ var DSMConnection = function (fileName) {
     this.position = 0;
     this.onPatching = false;
     this.emitChange = function () {
+        console.debug('### emitChange ###');
         if (!self.onPatching) {
+            console.debug('### emitChange done ###');
             self.onPatching = true;
             EE.emit('change');
         } else {
-            setTimeout(this.emitChange, 200);
+            console.debug('### emitChange postpone ###');
+            setTimeout(self.emitChange, 300);
         }
     };
 

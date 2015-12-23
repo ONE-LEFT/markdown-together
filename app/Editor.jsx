@@ -11,7 +11,7 @@ var JsDiff = require('diff');
 require('./editor.less');
 require('./markdown.less');
 
-var fileName = 'Markdown' + 'test15';
+var fileName = 'Markdown' + 'test21';
 var sendInterval = 600;
 
 var MdEditor = React.createClass({
@@ -37,7 +37,8 @@ var MdEditor = React.createClass({
             console.debug('### doPatch PATCH pos ###:', this.dsmConnection.position);
             try {
                 var item = JSON.parse(this.dsmConnection.diffStore.get(this.dsmConnection.position));
-                var result = JsDiff.applyPatch(this.dsmConnection.content, item.diff);
+                // TODO check fuzzFactor
+                var result = JsDiff.applyPatch(this.dsmConnection.content, item.diff, {fuzzFactor: 3});
                 console.debug('### doPatch applyPatch diff ###\n### diff file ###\n', item.diff);
                 if (result) {
                     this.dsmConnection.content = result;
@@ -57,32 +58,65 @@ var MdEditor = React.createClass({
         }
         this.dsmConnection.onPatching = false;
     },
+    setSelection: function (originText, selectionStart, selectionEnd) {
+        // Init Selection
+        //selectionStart = this.textControl.selectionStart;
+        //selectionEnd = this.textControl.selectionEnd;
+
+        var stringStart = originText.substr(0, selectionStart);
+        var stringEnd = originText.substr(selectionEnd, originText.length);
+        var patchedContent = this.dsmConnection.content;
+        var indexStart = patchedContent.indexOf(stringStart);
+        var indexEnd = patchedContent.indexOf(stringEnd);
+        var offset = NaN;
+        if (indexStart != -1) {
+            offset = selectionStart - (indexStart + stringStart.length);
+        } else if (indexEnd != -1) {
+            offset = indexEnd - selectionEnd;
+        }
+        console.debug('### selectionStart ###\n', selectionStart, '\n### selectionEnd ###\n', selectionEnd);
+        console.debug('### stringStart ###\n', stringStart, '\n### indexStart ###\n', indexStart);
+        console.debug('### stringEnd ###\n', stringEnd, '\n### indexEnd ###\n', indexEnd);
+        console.debug('### result (offset,selectionStart,selectionEnd) ###\n', offset, selectionStart + offset, selectionEnd + offset);
+        if (!isNaN(offset)) {
+            console.debug('### result stringStart ###\n', patchedContent.substr(0, selectionStart + offset), '\n### result stringEnd ###\n', patchedContent.substr(selectionEnd + offset, patchedContent.length));
+            this.textControl.setSelectionRange(selectionStart + offset, selectionEnd + offset);
+        }
+    },
     contentRemoteChange: function () {
         console.debug('### contentRemoteChange ###');
-        //var start = this.textControl.selectionStart;
-        //var end = this.textControl.selectionEnd;
-        var diff;
+
+        // Clear _remoteChangeTimer
         //if (this._remoteChangeTimer) clearTimeout(this._remoteChangeTimer);
-        if (this._changeTimer) {
-            //this._remoteChangeTimer = setTimeout(this.contentRemoteChange, sendInterval / 2);
-            //return;
-            clearTimeout(this._changeTimer);
-            this._changeTimer = null;
-            // PRE DIFF LOCAL CHANGE
-            if (this.textControl.value != this.dsmConnection.content) {
-                diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
-                console.debug('### contentRemoteChange createLocalPatch diff ###\n### diff file ###\n', diff);
-                if (!diff) {
-                    this.textControl.value = this.dsmConnection.content;
-                }
+        // Set _remoteChangeTimer
+        //if (this._changeTimer) {
+        //this._remoteChangeTimer = setTimeout(this.contentRemoteChange, sendInterval / 2);
+        //return;
+        //}
+        var originText = this.textControl.value;
+        var selectionStart = this.textControl.selectionStart;
+        var selectionEnd = this.textControl.selectionEnd;
+        var diff;
+        // PRE DIFF LOCAL CHANGE
+        if (this.textControl.value != this.dsmConnection.content) {
+            diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
+            console.debug('### contentRemoteChange createLocalPatch diff ###\n### diff file ###\n', diff);
+            if (!diff) {
+                this.textControl.value = this.dsmConnection.content;
             }
         }
+
         this.doPatch();
+
         // RESTORE LOCAL CHANGE
         var textControlResult;
         if (diff) {
-            textControlResult = JsDiff.applyPatch(this.dsmConnection.content, diff);
-            console.debug('### contentRemoteChange applyLocalPatch ###\n### result ###\n', textControlResult);
+            // TODO check fuzzFactor
+            textControlResult = JsDiff.applyPatch(this.dsmConnection.content, diff, {fuzzFactor: 3});
+            if (textControlResult)
+                console.debug('### contentRemoteChange applyLocalPatch ###\n### result ###\n', textControlResult);
+            else
+                console.error('### contentRemoteChange applyLocalPatch error ###\n### result ###\n', textControlResult);
         }
         if (textControlResult) {
             this.textControl.value = textControlResult;
@@ -91,10 +125,11 @@ var MdEditor = React.createClass({
             this.textControl.value = this.dsmConnection.content;
         }
         console.debug('### contentRemoteChange result ###\n', this.textControl.value);
-        //this.textControl.setSelectionRange(start,end);
+        this.setSelection(originText, selectionStart, selectionEnd);
         this.setState({result: marked(this.textControl.value)});
-        // Clear Timer
-        // this._remoteChangeTimer = null;
+
+        // Set _remoteChangeTimer null
+        //this._remoteChangeTimer = null;
     },
     componentDidMount: function () {
         console.debug('### componentDidMount ###');
@@ -216,19 +251,19 @@ var MdEditor = React.createClass({
         console.debug('### _onChange ###\n');
         if (this._changeTimer) clearTimeout(this._changeTimer);
         var doChange = function () {
-            if (!this.dsmConnection.onPatching) {
-                this.dsmConnection.onPatching = true;
-                var diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
-                console.debug('### _onChange createPatch diff ###\n', diff);
-                this.dsmConnection.sendDiff(diff);
-                this.doPatch();
-                this.textControl.value = this.dsmConnection.content;
-                this.setState({result: marked(this.textControl.value)});
-                this._changeTimer = null;
-            } else {
-                this._changeTimer = setTimeout(doChange, 200);
-            }
+            var originText = this.textControl.value;
+            var selectionStart = this.textControl.selectionStart;
+            var selectionEnd = this.textControl.selectionEnd;
+            var diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
+            console.debug('### _onChange createPatch diff ###\n', diff);
+            this.dsmConnection.sendDiff(diff);
+            this.doPatch();
+            this.textControl.value = this.dsmConnection.content;
+            this.setSelection(originText, selectionStart, selectionEnd);
+            this.setState({result: marked(this.textControl.value)});
+            this._changeTimer = null;
         }.bind(this);
+        if (!this.dsmConnection.onPatching) this.dsmConnection.onPatching = true;
         this._changeTimer = setTimeout(doChange, sendInterval);
         this.setState({result: marked(this.textControl.value)});
     },
