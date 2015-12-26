@@ -100,9 +100,10 @@ var DSMConnection = function (fileName) {
      * This function sends the message via DSM
      * @param {object} diff           diff data
      */
-    this.sendDiff = function (diff) {
+    this.sendDiff = function (diff, author) {
         var diffItem = JSON.stringify({
             diff: diff,
+            author: author,
             err: false
         });
         console.debug('### sendDiff ###\n', diffItem);

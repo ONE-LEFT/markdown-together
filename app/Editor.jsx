@@ -11,8 +11,19 @@ var JsDiff = require('diff');
 require('./editor.less');
 require('./markdown.less');
 
-var fileName = 'Markdown' + 'test21';
+
 var sendInterval = 600;
+
+var GetQueryString = function (name) {
+    var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+    var r = window.location.search.substr(1).match(reg);
+    if (r != null)return unescape(r[2]);
+    return null;
+};
+
+//var fileName = 'Markdown' + 'test21';
+var fileName = GetQueryString('fileName') ? 'Markdown' + GetQueryString('fileName') : 'MarkdownDefault';
+var author = GetQueryString('author') ? GetQueryString('author') : 'author';
 
 var MdEditor = React.createClass({
     dsmConnection: null,
@@ -256,7 +267,7 @@ var MdEditor = React.createClass({
             var selectionEnd = this.textControl.selectionEnd;
             var diff = JsDiff.createPatch(fileName, this.dsmConnection.content, this.textControl.value);
             console.debug('### _onChange createPatch diff ###\n', diff);
-            this.dsmConnection.sendDiff(diff);
+            this.dsmConnection.sendDiff(diff, author);
             this.doPatch();
             this.textControl.value = this.dsmConnection.content;
             this.setSelection(originText, selectionStart, selectionEnd);
