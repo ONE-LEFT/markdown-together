@@ -3,7 +3,6 @@ var ReactDOM = require('react-dom');
 var T = React.PropTypes;
 var marked = require('marked');
 var cNames = require('classnames');
-var ContentStore = require('./ContentStore.jsx');
 var EE = require('./EventEmitter.jsx');
 var DSMConnection = require('./DSMConnection.jsx');
 var JsDiff = require('diff');
@@ -37,8 +36,6 @@ var MdEditor = React.createClass({
             mode: 'split',
             isFullScreen: false,
             result: ''
-            //result: marked(ContentStore.content || ''),
-            //content: ContentStore.content || '',
             //fileName: fileName || 'Markdown'
         }
     },

@@ -1,5 +1,4 @@
 var EE = require('./EventEmitter.jsx');
-var ContentStore = require('./ContentStore.jsx');
 
 /****************************
  *    DSM Connection
@@ -41,31 +40,10 @@ var DSMConnection = function (fileName) {
 
         connectedNode.attachChild([self.diffStore, self.infoChannel], function () {
 
-            var addItemToContentStore = function (itemStr, pos) {
-                //try {
-                //    var diffItem = JSON.parse(itemStr);
-                //    ContentStore.diffQueue.push({
-                //        item: diffItem,
-                //        pos: pos
-                //    });
-                //    ContentStore.diffHistory.push({
-                //        item: diffItem,
-                //        pos: pos
-                //    });
-                //} catch (err) {
-                //    console.error('### addItemToContentStore ERROR ###\n', err);
-                //    self.setDiffErr(op.pos);
-                //}
-            };
-
-
             console.debug('### attachChild ###\n', self.diffStore.toJSON());
             console.debug('### attachChild size ###\n', self.diffStore.size());
 
             if (self.diffStore.size() > 0) {
-                //for (var i = 0; i < self.diffStore.size(); i += 1) {
-                //    addItemToContentStore(self.diffStore.get(i), i);
-                //}
                 self.emitChange();
             }
 
@@ -73,7 +51,6 @@ var DSMConnection = function (fileName) {
                 console.debug('### remoteupdate ###\n', op);
                 switch (op.type) {
                     case DSM.Operation.ADD:
-                        //addItemToContentStore(op.item, op.pos);
                         self.emitChange();
                         break;
                     case DSM.Operation.SET:
@@ -150,14 +127,6 @@ var DSMConnection = function (fileName) {
             this.diffStore.commit();
         }
     };
-
-    //var diffErrCallback = function () {
-    //    console.debug('### diffErrCallback ###');
-    //    var tmp = ContentStore.diffErrPosQueue.shift();
-    //    if (typeof(tmp) != 'undefined')
-    //        self.setDiffErr(tmp);
-    //};
-    //EE.on('setDiffErr', diffErrCallback);
 
 };
 
